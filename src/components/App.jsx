@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { nanoid } from 'nanoid';
 import { Container, Title } from './App.styled';
 import { ContactForm } from './ContactForm/ContactForm';
@@ -6,88 +6,66 @@ import { ContactList } from './ContactList/ContactList';
 import { Filter } from './Filter/Filter';
 import { Notification } from './Notification/Notification';
 
-export class App extends React.Component {
-  state = {
-    contacts: [
-      { id: 'id-1', name: 'Rosie Simpson', number: '459-12-56' },
-      { id: 'id-2', name: 'Hermione Kline', number: '443-89-12' },
-      { id: 'id-3', name: 'Eden Clements', number: '645-17-79' },
-      { id: 'id-4', name: 'Annie Copeland', number: '227-91-26' },
-    ],
-    filter: '',
-	};
-	
-	componentDidMount() {
-		const contacts = localStorage.getItem('contacts');
-		const parsedContacts = JSON.parse(contacts);
-		if (parsedContacts) {
-			this.setState({contacts: parsedContacts});
-		}
-	}
+const getInitialContacts = () => {
+  const parsedContacts = localStorage.getItem('contacts');
+  if (parsedContacts !== null) {
+    return JSON.parse(parsedContacts);
+  }
+  return { contacts: [] };
+};
 
-	componentDidUpdate(_, prevState) { 
-		if (this.state.contacts !== prevState.contacts) {
-			localStorage.setItem('contacts', JSON.stringify(this.state.contacts));
-		}
-	} 
+export const App = () => {
+  const [contacts, setContacts] = useState(getInitialContacts);
+  const [filter, setFilter] = useState('');
 
-  addNewContact = ({ name, number }) => {
-    const isExistsContact = this.state.contacts.some(
+  useEffect(() => {
+    localStorage.setItem('contacts', JSON.stringify(contacts));
+  }, [contacts]);
+
+  const addNewContact = ({ name, number }) => {
+    const isExistsContact = contacts.some(
       contact => contact.name.toLowerCase() === name.toLowerCase()
-    );
-    const isExistsNumber = this.state.contacts.some(
-      contact => contact.number === number
     );
 
     if (isExistsContact) {
       alert(`${name} is already in contacts`);
       return;
     }
-    if (isExistsNumber) {
-      alert(`Phone number ${number} is already exists`);
-      return;
-    }
 
-    this.setState(prevState => ({
-      contacts: [...prevState.contacts, { id: nanoid(), name, number }],
-    }));
+    setContacts(prevContacts => [
+      ...prevContacts,
+      { id: nanoid(), name, number },
+    ]);
   };
 
-  changeFilter = e => this.setState({ filter: e.target.value });
-
-  existsContacts = () => {
-    const { filter, contacts } = this.state;
+	const changeFilter = e => setFilter(e.target.value);
+	
+  const existsContacts = useMemo(() => {
     return contacts.filter(contact =>
-      contact.name.toLowerCase().includes(filter.toLowerCase())
+      contact.name.toLowerCase().includes(filter)
+    );
+  }, [filter, contacts]);
+
+  const delContact = contactId => {
+    setContacts(prevContacts =>
+      prevContacts.filter(({ id }) => id !== contactId)
     );
   };
 
-  delContact = contactId => {
-    this.setState(prevState => ({
-      contacts: prevState.contacts.filter(({ id }) => id !== contactId),
-    }));
-  };
+  return (
+    <Container>
+      <Title title="Phonebook" />
+      <ContactForm newContact={addNewContact} />
 
-  render() {
-    const { filter, contacts } = this.state;
-    return (
-      <Container>
-        <Title title="Phonebook" />
-        <ContactForm newContact={this.addNewContact} />
-
-        <Title title="Contacts" />
-        {contacts.length > 0 ? (
-          <Filter value={filter} onChange={this.changeFilter} />
-        ) : (
-          <Notification message="You don't have any contacts!" />
-        )}
-        {contacts.length > 0 && (
-          <ContactList
-            contacts={this.existsContacts()}
-            onDelContact={this.delContact}
-          />
-        )}
-      </Container>
-    );
-  }
-}
+      <Title title="Contacts" />
+      {contacts.length > 0 ? (
+        <Filter value={filter} onChange={changeFilter} />
+      ) : (
+        <Notification message="You don't have any contacts!" />
+      )}
+      {contacts.length > 0 && (
+        <ContactList contacts={existsContacts} onDelContact={delContact} />
+      )}
+    </Container>
+  );
+};
