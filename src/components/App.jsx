@@ -11,7 +11,7 @@ const getInitialContacts = () => {
   if (parsedContacts !== null) {
     return JSON.parse(parsedContacts);
   }
-  return { contacts: [] };
+  return [];
 };
 
 export const App = () => {
